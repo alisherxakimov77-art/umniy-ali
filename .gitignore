@@ -1,36 +1,9 @@
-# === IDE ===
-.idea/
-.vscode/
-*.iml
-
-# === Python ===
-__pycache__/
-*.py[cod]
-*.egg-info/
-.venv/
 venv/
+__pycache__/
+*.pyc
 .env
-*.session
-*.session-journal
-*.db
-
-# === Android ===
-*.apk
-*.aab
-*.dex
 local.properties
 .gradle/
 build/
-*/build/
-captures/
-.externalNativeBuild/
-.cxx/
-*.keystore
-*.jks
-
-# === OS ===
-.DS_Store
-Thumbs.db
-
-# === Logs ===
-*.log
+*.apk
+.idea/

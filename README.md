@@ -1,78 +1,37 @@
-# Умный Али
+# УМНЫЙ АЛИ — голосовой AI-ассистент
 
-Мобильный голосовой AI-ассистент для Android.
+## Что внутри
+- `android/` — приложение Android (Kotlin): голосовой ввод/вывод (ru, uz), чат с ИИ
+- `server/` — сервер (Python + FastAPI): мозг (LLM), API для приложения
+- `.github/workflows/` — автосборка APK на GitHub
 
-## Структура проекта
+## Запуск (по шагам)
 
-```
-UMNIY ALI/
-├── server/          # Серверная часть: FastAPI + Telethon + LLM
-└── android/         # Android-приложение: Kotlin + Jetpack Compose
-```
+### 1. Сервер (на компьютере, который всегда включён или когда нужен)
+1. Установи Python 3.11+ (с www.python.org, галочка "Add to PATH")
+2. В папке `server` скопируй `.env.example` в файл `.env`
+3. В `.env` вставь свой ключ LLM_API_KEY (OpenAI или совместимый API)
+4. Запусти `start_server.bat` — сервер поднимется на порту 8000
 
-## MVP (этап 1)
+### 2. Узнай IP компьютера
+Открой cmd → `ipconfig` → найди IPv4 (например 192.168.1.100)
 
-- [x] Голосовой ввод/вывод (ru, uz)
-- [x] Диалог через LLM API
-- [x] Изменяемое имя ассистента и характер
-- [x] Мониторинг Telegram-каналов и парсинг ноутбуков
-- [x] Локальные настройки и история (Room)
-- [x] Подсчёт калорий по фото еды (vision LLM)
+### 3. Сборка APK
+1. Запушь проект на GitHub (push_to_github.bat)
+2. GitHub → Actions → Build Android → Run workflow
+3. Скачай Artifacts → app-debug.apk → установи на телефон
 
-## Быстрый старт
+### 4. Подключение
+1. Телефон и компьютер должны быть в одной Wi-Fi сети
+2. В приложении нажми ⚙️ → вставь `http://ТВОЙ_IP:8000` → Сохранить
+3. Нажми 🎤 и говори: «Привет, как дела?»
 
-### Сервер (Windows)
+## Настройки в приложении
+- Имя ассистента (по умолчанию «Умный Али»)
+- Твоё имя
+- Характер (деловой / ироничный / дружеский)
+- Язык голоса: русский / узбекский
 
-Дважды кликни:
-```
-server/start_server.bat
-```
-
-Или вручную:
-```bash
-cd server
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-copy .env.example .env
-# Отредактируй .env: добавь LLM_API_KEY, TELEGRAM_API_ID, TELEGRAM_API_HASH
-uvicorn app.main:app --reload
-```
-
-### Android
-
-### Перед сборкой Android (обязательно)
-
-1. Скопируй `android/local.properties.example` → `android/local.properties`.
-2. В `local.properties` укажи IP своего сервера, например:
-   ```properties
-   SERVER_URL=http://192.168.1.100:8000/
-   ```
-   Для эмулятора оставь `http://10.0.2.2:8000/`.
-
-#### Способ 1: готовый APK с GitHub Actions (самое простое)
-
-1. Загрузи проект на GitHub.
-2. Перейди во вкладку **Actions** → выбери workflow **Build Android APK**.
-3. Нажми **Run workflow**.
-4. Через 5–10 минут во вкладке **Actions** появится артефакт `umniy-ali-debug-apk`.
-5. Скачай ZIP, разархивируй, файл `app-debug.apk` закинь на телефон и установи.
-
-#### Способ 2: собрать в Android Studio
-
-1. Открыть папку `android` в Android Studio.
-2. Убедиться, что создан `local.properties` с `SERVER_URL`.
-3. Запустить сборку (`Build → Build APK(s)`).
-4. APK будет в `android/app/build/outputs/apk/debug/app-debug.apk`.
-
-## API ключи
-
-Все ключи хранятся на сервере (`.env`). В приложении только URL сервера.
-
-## Следующие шаги
-
-- [ ] Экран списка найденных ноутбуков
-- [ ] Push-уведомления о новых находках
-- [ ] Офлайн-напоминания
-- [ ] SMS/звонки
-- [ ] Кодовое слово активации
+## Telegram-мониторинг (поиск ноутбуков)
+Скелет модуля: `server/app/services/telegram_monitor.py`
+Понадобится api_id/api_hash с https://my.telegram.org (бесплатно).
