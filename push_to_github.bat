@@ -21,8 +21,8 @@ set /p GH_USER=GitHub login:
 set REPO=umniy-ali
 set /p REPO=Repo name [%REPO%]: 
 
-git remote remove origin 2>nul
-git remote add origin https://github.com/%GH_USER%/%REPO%.git
+git remote remove origin
+git remote add origin https://github.com/alisherxakimov77-art/umniy-ali.git
 git push -u origin main
 
 echo.
