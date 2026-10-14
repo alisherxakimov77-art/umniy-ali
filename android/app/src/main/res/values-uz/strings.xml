@@ -1,0 +1,25 @@
+<resources>
+    <string name="app_name">Aqilli Ali</string>
+    <string name="hint_speak">Nimadir ayting…</string>
+    <string name="button_listen">Tinglash</string>
+    <string name="button_stop">To'xtatish</string>
+    <string name="button_send">Yuborish</string>
+    <string name="button_camera">Kamera</string>
+    <string name="button_gallery">Galereya</string>
+    <string name="title_chat">Chat</string>
+    <string name="title_settings">Sozlamalar</string>
+    <string name="assistant_name">Yordamchi nomi</string>
+    <string name="user_name">Sizning ismingiz</string>
+    <string name="character">Xarakter</string>
+    <string name="language">Til</string>
+    <string name="voice">Ovoz</string>
+    <string name="cancel">Bekor qilish</string>
+    <string name="confirm">Tasdiqlash</string>
+    <string name="empty_chat">Mikrofonga bosing va nimadir ayting</string>
+    <string name="profile">Profil</string>
+    <string name="character_and_language">Xarakter va til</string>
+    <string name="server">Server</string>
+    <string name="online_status">Onlayn • Ovozli yordamchi</string>
+    <string name="offline_status">Offlayn rejim</string>
+    <string name="version">Versiya 1.0.0 • Jarvis Edition</string>
+</resources>
