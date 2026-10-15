@@ -22,5 +22,6 @@ async def chat(req: ChatRequest):
     try:
         reply = await ask_llm(req)
     except Exception as e:
+        print("LLM ERROR:", repr(e))
         raise HTTPException(status_code=502, detail=f"LLM error: {e}")
     return ChatResponse(reply=reply, action=None)

@@ -10,7 +10,7 @@ async def ask_llm(req: ChatRequest) -> str:
     messages += req.history[-20:]
     messages.append({"role": "user", "content": req.message})
 
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with httpx.AsyncClient(timeout=180) as client:
         r = await client.post(
             settings.llm_base_url.rstrip("/") + "/chat/completions",
             headers={"Authorization": f"Bearer {settings.llm_api_key}"},
