@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.chat import router as chat_router
+from app.api.voice import router as voice_router
 
 app = FastAPI(title="Umniy Ali Server")
 
@@ -13,6 +14,7 @@ app.add_middleware(
 )
 
 app.include_router(chat_router)
+app.include_router(voice_router)
 
 
 @app.get("/")

@@ -1,12 +1,9 @@
 package com.umniyali.app
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.MediaRecorder
 import android.os.Bundle
-import android.speech.RecognitionListener
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -24,10 +21,13 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import java.io.File
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -36,14 +36,16 @@ class MainActivity : AppCompatActivity() {
     data class Msg(val me: Boolean, val text: String)
 
     private val msgs = mutableListOf(
-        Msg(false, "Salom! Men Umniy Aliman. Mikrofonni bosing yoki yozing. / Privet! Nazhmi na mikrofon ili napishi soobshenie.")
+        Msg(false, "Salom! Men Umniy Aliman. Mikrofonni bosing, gapiring, yana bosing. / Privet! Nazhmite Mic, skazhite, nazhmite esche raz.")
     )
     private lateinit var adapter: A
-    private var recognizer: SpeechRecognizer? = null
     private var tts: TextToSpeech? = null
+    private var recorder: MediaRecorder? = null
+    private var voiceFile: File? = null
+    private var recording = false
     private val http = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(90, TimeUnit.SECONDS)
+        .readTimeout(120, TimeUnit.SECONDS)
         .build()
     private val JSON = "application/json; charset=utf-8".toMediaType()
     private val prefs by lazy { getSharedPreferences("umniy_ali", MODE_PRIVATE) }
@@ -56,7 +58,7 @@ class MainActivity : AppCompatActivity() {
         rv.layoutManager = LinearLayoutManager(this)
         rv.adapter = adapter
         findViewById<Button>(R.id.send).setOnClickListener { send() }
-        findViewById<Button>(R.id.mic).setOnClickListener { mic() }
+        findViewById<Button>(R.id.mic).setOnClickListener { micToggle() }
         findViewById<Button>(R.id.settings).setOnClickListener { settingsDialog() }
         initTts()
     }
@@ -129,47 +131,83 @@ class MainActivity : AppCompatActivity() {
         findViewById<RecyclerView>(R.id.chat).scrollToPosition(msgs.size - 1)
     }
 
-    private fun mic() {
+    // ---------------- VOICE (record -> server Whisper) ----------------
+
+    private fun micToggle() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
             != PackageManager.PERMISSION_GRANTED
         ) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 1)
             return
         }
-        recognizer?.destroy()
-        recognizer = SpeechRecognizer.createSpeechRecognizer(this)
-        recognizer?.setRecognitionListener(object : RecognitionListener {
-            override fun onReadyForSpeech(params: Bundle?) {
-                toast("Listening...")
-            }
-
-            override fun onResults(results: Bundle?) {
-                val text = results?.getStringArrayList(RecognizerIntent.EXTRA_RESULTS)?.getOrNull(0)
-                if (!text.isNullOrEmpty()) {
-                    findViewById<EditText>(R.id.input).setText(text)
-                    send()
-                }
-            }
-
-            override fun onError(error: Int) {
-                toast("Speech error (" + error + "). Try again.")
-            }
-
-            override fun onBeginningOfSpeech() {}
-            override fun onRmsChanged(rmsdB: Float) {}
-            override fun onBufferReceived(buffer: ByteArray?) {}
-            override fun onEndOfSpeech() {}
-            override fun onPartialResults(partialResults: Bundle?) {}
-            override fun onEvent(eventType: Int, params: Bundle?) {}
-        })
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-            .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            .putExtra(RecognizerIntent.EXTRA_LANGUAGE, lang())
-            .putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, lang())
-            .putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, lang())
-            .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
-        recognizer?.startListening(intent)
+        if (!recording) startRecording() else stopRecordingAndSend()
     }
+
+    private fun startRecording() {
+        try {
+            voiceFile = File(cacheDir, "voice.m4a")
+            @Suppress("DEPRECATION")
+            recorder = MediaRecorder()
+            recorder?.setAudioSource(MediaRecorder.AudioSource.MIC)
+            recorder?.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            recorder?.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            recorder?.setAudioEncodingBitRate(64000)
+            recorder?.setAudioSamplingRate(16000)
+            recorder?.setOutputFile(voiceFile!!.absolutePath)
+            recorder?.prepare()
+            recorder?.start()
+            recording = true
+            toast("Speaking... press Mic again to send")
+        } catch (e: Exception) {
+            toast("Mic error: " + (e.message ?: "error"))
+            recorder?.release()
+            recorder = null
+        }
+    }
+
+    private fun stopRecordingAndSend() {
+        recording = false
+        var ok = true
+        try {
+            recorder?.stop()
+        } catch (e: Exception) {
+            ok = false
+        }
+        recorder?.release()
+        recorder = null
+        val f = voiceFile
+        if (!ok || f == null || !f.exists() || f.length() < 1500) {
+            toast("Too short, try again")
+            return
+        }
+        toast("Recognizing...")
+        Thread {
+            try {
+                val body = MultipartBody.Builder()
+                    .setType(MultipartBody.FORM)
+                    .addFormDataPart("file", "voice.m4a", f.asRequestBody("audio/mp4".toMediaType()))
+                    .build()
+                val req = Request.Builder().url(server() + "/stt").post(body).build()
+                http.newCall(req).execute().use { resp ->
+                    val b = resp.body?.string()
+                    val text =
+                        if (resp.isSuccessful && b != null) JSONObject(b).optString("text", "").trim() else ""
+                    runOnUiThread {
+                        if (text.isEmpty()) {
+                            toast("Did not hear, try again")
+                        } else {
+                            findViewById<EditText>(R.id.input).setText(text)
+                            send()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                runOnUiThread { toast("Voice error: " + (e.message ?: "error")) }
+            }
+        }.start()
+    }
+
+    // ---------------- SETTINGS ----------------
 
     private fun settingsDialog() {
         val view = layoutInflater.inflate(R.layout.dialog_settings, null)
@@ -216,7 +254,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        recognizer?.destroy()
+        try {
+            if (recording) recorder?.stop()
+        } catch (e: Exception) {
+        }
+        recorder?.release()
         tts?.stop()
         tts?.shutdown()
         super.onDestroy()
